@@ -1,7 +1,7 @@
+import webbrowser
 from os import chdir, getcwd
 from pathlib import Path
 from typing import Optional
-import webbrowser
 
 from flask import Flask, abort, make_response, request
 from flask_cors import CORS
@@ -27,7 +27,8 @@ ALLOWED_SUFFIXES = [".py"]
 LIMIT_DEPTH = 3
 BINARY = "C:\\Program Files\\Mozilla Firefox\\firefox.exe"
 
-webbrowser.open("http://127.0.0.1:5000/static/dist/index.html")
+STATIC = "static/dist/index.html"  # app.py からの相対パス
+webbrowser.open(f"http://127.0.0.1:5000/{STATIC}")
 
 
 @app.route('/dirtree')
