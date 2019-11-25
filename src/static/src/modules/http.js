@@ -6,6 +6,7 @@ import { DirTree } from "./dirtree";
 const DIRTREE_URL = "http://127.0.0.1:5000/dirtree";
 const FILE_URL = "http://127.0.0.1:5000/file";
 const EXE_URL = "http://127.0.0.1:5000/exe";
+const WS_EXE_URL = "ws://127.0.0.1:5000/exews";
 
 /**
  * @returns {Promise<DirTree>}
@@ -13,8 +14,6 @@ const EXE_URL = "http://127.0.0.1:5000/exe";
 export const getDirTree = async () => {
   const resp = await fetch(DIRTREE_URL, { mode: "cors" });
   const json = await resp.json();
-  // const dirTree = new DirTree();
-  // Object.assign(dirTree, json);
   return DirTree.from(json);
 };
 
@@ -76,4 +75,20 @@ export const postExe = async script => {
     }
   });
   return await resp.text();
+};
+
+/**
+ *
+ * @param {string} script
+ */
+export const websocketExe = script => {
+  const socket = new WebSocket(WS_EXE_URL);
+
+  socket.addEventListener("open", _ => {
+    socket.send(script);
+  });
+
+  socket.addEventListener("message", event => {
+    console.log(event.data);
+  });
 };

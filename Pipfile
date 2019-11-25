@@ -13,6 +13,7 @@ mypy = "*"
 flask = "*"
 flask-cors = "*"
 marionette-driver = "==2.3.0"
+gevent-websocket = "*"
 
 [requires]
 python_version = "3.7"

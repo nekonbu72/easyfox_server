@@ -78,6 +78,9 @@ class Puppet:
         "video/webm",
         "video/x-msvideo"
     ]
+    METHOD_CSS_SELECTOR = "css selector"
+    NO_LOG = "-"
+    DELETE_TARGET_FILES = ["mimeTypes.rdf", "handlers.json"]
 
     def __init__(self, binary: str, profile: str):
         self.__has_session = False
@@ -85,23 +88,31 @@ class Puppet:
         self.__download_dir = ""
 
         if not Path(binary).is_file():
+            print(f"Binary {binary} Not Found")
             return
 
         if not Path(profile).is_dir():
+            print(f"Profile {profile} Not Found")
             return
 
         # geckodriver の log ファイル出力を抑止する
-        NO_LOG = "-"
         self.marionette = Marionette(
-            bin=binary, gecko_log=NO_LOG, profile=profile)
+            bin=binary, gecko_log=self.NO_LOG, profile=profile)
 
-        # start_session にファイルを消しておかないと
+        # start_session 前にファイルを消しておかないと
         # 後で自動ダウンロードできない
         self.__delete_download_profile()
 
         # start_session しないと quit もできない
         self.marionette.start_session()
         self.__has_session = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, ex_type, ex_value, trace):
+        if self.has_session:
+            self.quit()
 
     @property
     def has_session(self):
@@ -115,8 +126,7 @@ class Puppet:
         # mimeTypes.rdf と handlers.json に
         # ファイル読み込み時の動作設定が保存されている（text/plain はファイルを保存、など）
         # 自動ダウンロードするため既存の設定は削除する
-        DELETE_TARGET_FILES = ["mimeTypes.rdf", "handlers.json"]
-        for name in DELETE_TARGET_FILES:
+        for name in self.DELETE_TARGET_FILES:
             p = Path(self.marionette.profile_path).joinpath(name)
             if p.is_file():
                 p.unlink()
@@ -129,6 +139,7 @@ class Puppet:
         USER_DEFINED = 2
         self.marionette.set_pref("browser.download.folderList", USER_DEFINED)
         self.marionette.set_pref("browser.download.lastDir", None)
+        self.__auto_download = True
 
     @property
     def download_dir(self):
@@ -140,12 +151,13 @@ class Puppet:
     def download_dir(self, dir: str):
         p = Path(dir)
         if not p.is_dir():
+            print(f"{dir} Not Found")
             return
 
         full_path = str(p.resolve())
         if self.__auto_download == False:
             self.__activate_auto_download()
-            self.__auto_download = True
+            # self.__auto_download = True
 
         self.marionette.set_pref("browser.download.dir", full_path)
         self.marionette.set_pref("browser.download.downloadDir", full_path)
@@ -155,12 +167,10 @@ class Puppet:
         self.download_dir = dir
 
     def query_selector(self, selectors: str) -> HTMLElement:
-        METHOD_CSS_SELECTOR = "css selector"
-        return self.marionette.find_element(METHOD_CSS_SELECTOR, selectors)
+        return self.marionette.find_element(self.METHOD_CSS_SELECTOR, selectors)
 
     def query_selectors(self, selectors: str) -> List[HTMLElement]:
-        METHOD_CSS_SELECTOR = "css selector"
-        return self.marionette.find_elements(METHOD_CSS_SELECTOR, selectors)
+        return self.marionette.find_elements(self.METHOD_CSS_SELECTOR, selectors)
 
     def wait(self, seconds: int):
         actions = Actions(self.marionette)

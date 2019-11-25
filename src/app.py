@@ -3,13 +3,16 @@ from os import chdir, getcwd
 from pathlib import Path
 from typing import Optional
 
-from flask import Flask, abort, make_response, request
+from flask import Flask, Response, abort, make_response, request
 from flask_cors import CORS
+from gevent import pywsgi, sleep
+from geventwebsocket.handler import WebSocketHandler
 
 from directory import DirTree
 from puppeteer.download import setup_download_folder
 from puppeteer.puppet import Puppet
 from puppeteer.userprofile import profile_dir
+from websocketout import WebSocketOut
 
 app = Flask(__name__)
 CORS(app)
@@ -27,8 +30,10 @@ ALLOWED_SUFFIXES = [".py"]
 LIMIT_DEPTH = 3
 BINARY = "C:\\Program Files\\Mozilla Firefox\\firefox.exe"
 
-STATIC = "static/dist/index.html"  # app.py からの相対パス
-webbrowser.open(f"http://127.0.0.1:5000/{STATIC}")
+STATIC = "static/dist/index.html"  # app.py からの相対パス、ホームディレクトリではないので注意
+HOST = "127.0.0.1"
+PORT = 5000
+webbrowser.open(f"http://{HOST}:{PORT}/{STATIC}")
 
 
 @app.route('/dirtree')
@@ -95,6 +100,19 @@ def file(relative: str):
 @app.route('/exe', methods=['POST'])
 def execute():
     script = request.get_data(as_text=True)
+    return __execute(script)
+
+
+@app.route('/exews')
+def execute_ws():
+    if request.environ.get("wsgi.websocket"):
+        ws = request.environ['wsgi.websocket']
+        script = ws.receive()
+        with WebSocketOut(ws):
+            return __execute(script)
+
+
+def __execute(script: str) -> Response:
     if script == "":
         abort(400, "Empty Script")
 
@@ -102,27 +120,25 @@ def execute():
     if profile is None:
         abort(500, "Firefox Default Profile Not Found")
 
-    puppet = Puppet(BINARY, profile)
-    if not puppet.has_session:
-        abort(500, "Marionette Session Not Started")
+    with Puppet(BINARY, profile) as puppet:
+        if not puppet.has_session:
+            abort(500, "Marionette Session Not Started")
 
-    cwd = getcwd()
-    chdir(ROOT)
-    err = puppet.exec(script)
-    chdir(cwd)
+        cwd = getcwd()
+        chdir(ROOT)
+        err = puppet.exec(script)
+        chdir(cwd)
 
-    if not err is None:
-        if puppet.has_session:
-            puppet.quit()
-        abort(500, f"Invalid Script: {err}")
+        if not err is None:
+            abort(500, f"Invalid Script: {err}")
 
-    if puppet.has_session:
-        puppet.quit()
-
-    resp = make_response("The execution was succeeded.")
-    resp.headers['Content-Type'] = 'text/plain'
-    return resp
+        resp = make_response("The execution was succeeded.")
+        resp.headers['Content-Type'] = 'text/plain'
+        return resp
 
 
 if __name__ == "__main__":
-    app.run()
+    server = pywsgi.WSGIServer(
+        (HOST, PORT), app, handler_class=WebSocketHandler)
+    server.serve_forever()
+    # app.run()

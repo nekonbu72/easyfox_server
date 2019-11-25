@@ -12,7 +12,7 @@
           class="btn new"
           @click="newUnsavedFile"
           :disabled="!isNewEnabled"
-          value="new"
+          value="New"
         />
         <input
           type="submit"
@@ -27,7 +27,14 @@
           class="btn exe"
           @click="executeScript"
           :disabled="!isExeEnabled"
-          value="Exe"
+          value="Run"
+        />
+        <input
+          type="submit"
+          class="btn exe"
+          @click="executeScriptWS"
+          :disabled="!isExeEnabled"
+          value="Run2"
         />
         <label class="status">{{ status }}</label>
       </div>
@@ -58,7 +65,8 @@ import {
   getText,
   overwrite,
   delete_ as httpDelete,
-  postExe
+  postExe,
+  websocketExe
 } from "./modules/http";
 import { DirTree as Tree } from "./modules/dirtree";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
@@ -372,6 +380,11 @@ export default {
       const script = this.editor.getValue();
       const result = await postExe(script);
       console.log(result);
+    },
+
+    async executeScriptWS() {
+      const script = this.editor.getValue();
+      websocketExe(script);
     }
   }
 };
