@@ -9,16 +9,15 @@ from gevent import pywsgi, sleep
 from geventwebsocket.handler import WebSocketHandler
 
 from directory import DirTree
-from puppeteer.download import setup_download_folder
-from puppeteer.puppet import Puppet
-from puppeteer.userprofile import profile_dir
+from puppet import Puppet
+from userprofile import profile_dir
 from websocketout import WebSocketOut
 
 app = Flask(__name__)
 CORS(app)
-app.config['JSON_AS_ASCII'] = False
+app.config["JSON_AS_ASCII"] = False
 
-ROOT = "src\\puppeteer\\scripts\\"
+ROOT = "src\\scripts\\"
 root = Path(ROOT)
 if not root.exists():
     abort(404, "Root Not Found")
@@ -30,13 +29,8 @@ ALLOWED_SUFFIXES = [".py"]
 LIMIT_DEPTH = 3
 BINARY = "C:\\Program Files\\Mozilla Firefox\\firefox.exe"
 
-STATIC = "static/dist/index.html"  # app.py からの相対パス、ホームディレクトリではないので注意
-HOST = "127.0.0.1"
-PORT = 5000
-webbrowser.open(f"http://{HOST}:{PORT}/{STATIC}")
 
-
-@app.route('/dirtree')
+@app.route("/dirtree")
 def dirtree():
     dir_tree = DirTree(ROOT,
                        suffixes=ALLOWED_SUFFIXES,
@@ -46,17 +40,17 @@ def dirtree():
         abort(415, "Root Suffix Not Allowed")
 
     resp = make_response(dir_tree.to_JSON())
-    resp.headers['Content-Type'] = 'application/json'
+    resp.headers["Content-Type"] = "application/json"
     return resp
 
 
-@app.route('/file/<path:relative>', methods=['GET', 'PUT', 'DELETE'])
+@app.route("/file/<path:relative>", methods=["GET", "PUT", "DELETE"])
 def file(relative: str):
     path_from_root = root.joinpath(relative)
     if not path_from_root.suffix in ALLOWED_SUFFIXES:
         abort(415, "File Suffix Not Allowed")
 
-    if request.method == 'GET':
+    if request.method == "GET":
         if not path_from_root.is_file():
             abort(404, "File Not Found")
 
@@ -67,19 +61,19 @@ def file(relative: str):
                 abort(415, "File Not Readable")
 
         resp = make_response(str(read_data))
-        resp.headers['Content-Type'] = 'text/plain'
+        resp.headers["Content-Type"] = "text/plain"
         return resp
 
-    elif request.method == 'DELETE':
+    elif request.method == "DELETE":
         if not path_from_root.is_file():
             abort(404, "File Not Found")
 
         path_from_root.unlink()
         resp = make_response("ok")
-        resp.headers['Content-Type'] = 'text/plain'
+        resp.headers["Content-Type"] = "text/plain"
         return resp
 
-    elif request.method == 'PUT':
+    elif request.method == "PUT":
         if not path_from_root.is_file():
             try:
                 path_from_root.touch(exist_ok=False)
@@ -93,20 +87,20 @@ def file(relative: str):
                 abort(415, "File Not Writable")
 
         resp = make_response(str(length))
-        resp.headers['Content-Type'] = 'text/plain'
+        resp.headers["Content-Type"] = "text/plain"
         return resp
 
 
-@app.route('/exe', methods=['POST'])
+@app.route("/exe", methods=["POST"])
 def execute():
     script = request.get_data(as_text=True)
     return __execute(script)
 
 
-@app.route('/exews')
+@app.route("/exews")
 def execute_ws():
     if request.environ.get("wsgi.websocket"):
-        ws = request.environ['wsgi.websocket']
+        ws = request.environ["wsgi.websocket"]
         script = ws.receive()
         with WebSocketOut(ws):
             return __execute(script)
@@ -133,12 +127,16 @@ def __execute(script: str) -> Response:
             abort(500, f"Invalid Script: {err}")
 
         resp = make_response("The execution was succeeded.")
-        resp.headers['Content-Type'] = 'text/plain'
+        resp.headers["Content-Type"] = "text/plain"
         return resp
 
 
 if __name__ == "__main__":
+    STATIC = "static/dist/index.html"  # app.py からの相対パス、ホームディレクトリからではないので注意
+    HOST = "127.0.0.1"
+    PORT = 5000
+    webbrowser.open(f"http://{HOST}:{PORT}/{STATIC}")
+
     server = pywsgi.WSGIServer(
         (HOST, PORT), app, handler_class=WebSocketHandler)
     server.serve_forever()
-    # app.run()

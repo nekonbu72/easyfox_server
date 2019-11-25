@@ -81,6 +81,8 @@ class Puppet:
     METHOD_CSS_SELECTOR = "css selector"
     NO_LOG = "-"
     DELETE_TARGET_FILES = ["mimeTypes.rdf", "handlers.json"]
+    USER_DEFINED = 2
+    GECKO_LOG = Path(__file__).parent.resolve()
 
     def __init__(self, binary: str, profile: str):
         self.__has_session = False
@@ -97,7 +99,7 @@ class Puppet:
 
         # geckodriver の log ファイル出力を抑止する
         self.marionette = Marionette(
-            bin=binary, gecko_log=self.NO_LOG, profile=profile)
+            bin=binary, gecko_log=self.GECKO_LOG,  profile=profile)
 
         # start_session 前にファイルを消しておかないと
         # 後で自動ダウンロードできない
@@ -136,8 +138,8 @@ class Puppet:
         self.marionette.set_pref("browser.download.useDownloadDir", True)
         self.marionette.set_pref("browser.helperApps.neverAsk.saveToDisk",
                                  ",".join(self.MIME_TYPES))
-        USER_DEFINED = 2
-        self.marionette.set_pref("browser.download.folderList", USER_DEFINED)
+        self.marionette.set_pref(
+            "browser.download.folderList", self.USER_DEFINED)
         self.marionette.set_pref("browser.download.lastDir", None)
         self.__auto_download = True
 
@@ -151,7 +153,7 @@ class Puppet:
     def download_dir(self, dir: str):
         p = Path(dir)
         if not p.is_dir():
-            print(f"{dir} Not Found")
+            print(f"Download Dir {dir} Not Found")
             return
 
         full_path = str(p.resolve())
@@ -178,8 +180,9 @@ class Puppet:
 
     def quit(self):
         profile = Path(self.marionette.profile_path)
-        self.marionette.quit()
-        self.__forced_rmdir(profile)
+        self.marionette.quit(clean=True)
+        # self.__forced_rmdir(profile)
+        # Path(self.GECKO_LOG).unlink()
         self.__has_session = False
 
     def exec(self, script: str) -> Optional[str]:
@@ -195,13 +198,14 @@ class Puppet:
             exec(script)
             return None
         except Exception as err:
-            return str(err)
+            return str(err.args[0])
 
     @classmethod
     def __forced_rmdir(self, p: Path):
-        for f in p.iterdir():
-            if f.is_file():
-                f.unlink()
-            elif f.is_dir():
-                self.__forced_rmdir(f)
-        p.rmdir()
+        if p.is_dir():
+            for f in p.iterdir():
+                if f.is_file():
+                    f.unlink()
+                elif f.is_dir():
+                    self.__forced_rmdir(f)
+            p.rmdir()

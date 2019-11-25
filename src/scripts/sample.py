@@ -15,5 +15,3 @@ tgt.click()
 wait(15)
 
 print("done")
-
-# quit()

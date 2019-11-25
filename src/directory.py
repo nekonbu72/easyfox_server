@@ -1,8 +1,7 @@
 import json
-import os
-from pathlib import Path
-from typing import Callable, List
 from inspect import ismethod
+from pathlib import Path
+from typing import List
 
 
 class DirTree:
@@ -24,7 +23,7 @@ class DirTree:
         self.__stem = root_p.stem
         self.__suffix = root_p.suffix
 
-        self.__full_path = os.path.join(self.parent, self.name)
+        self.__full_path = str(root_p)
 
         self.__is_dir = root_p.is_dir()
         self.__is_file = root_p.is_file()
