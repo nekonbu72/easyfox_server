@@ -99,7 +99,7 @@ class Puppet:
 
         # geckodriver の log ファイル出力を抑止する
         self.marionette = Marionette(
-            bin=binary, gecko_log=self.GECKO_LOG,  profile=profile)
+            bin=binary, gecko_log=self.NO_LOG,  profile=profile)
 
         # start_session 前にファイルを消しておかないと
         # 後で自動ダウンロードできない
